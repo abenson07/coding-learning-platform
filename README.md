@@ -1,41 +1,66 @@
-# Coding Learning Platform MVP
+# Coding Learning Platform
 
-MVP implementation for **BEN-212**: display a single lesson and support persistent text highlighting.
+Backend and schema work for **BEN-213**: Supabase/Postgres schema foundation, migrations, seeds, and Express API integration.
 
 ## Stack
 
 - Frontend: React + Vite + Tailwind CSS
 - Backend: Express
-- Database: SQLite (`better-sqlite3`)
+- Database: PostgreSQL (Supabase-compatible)
+- Query builder + pooling: Knex + `pg`
 - Tests: Vitest + Testing Library + Supertest
+
+## Environment
+
+Copy `.env.example` to `.env` and set `DATABASE_URL` to your Supabase Postgres URL:
+
+```bash
+cp .env.example .env
+```
+
+## Database setup
+
+Install dependencies and run migrations/seeds:
+
+```bash
+npm install
+npm run db:migrate
+npm run db:seed
+```
+
+Available database scripts:
+
+- `npm run db:migrate` - apply latest migrations
+- `npm run db:rollback` - rollback latest migration batch
+- `npm run db:seed` - run seed data
+- `npm run db:reset` - rollback + migrate + seed
 
 ## Run locally
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Start frontend and backend:
-   ```bash
-   npm run dev
-   ```
-   - Express API runs on `http://localhost:3765` (set `PORT` to override)
-   - Vite app runs on `http://localhost:5173`
+Start frontend and backend:
+
+```bash
+npm run dev
+```
+
+- Express API: `http://localhost:3765` (set `PORT` to override)
+- Vite app: `http://localhost:5173`
 
 ## API Endpoints
 
+- `GET /api/health`
 - `GET /api/lessons/intro`
 - `GET /api/highlights/:lessonId`
 - `POST /api/highlights`
-- `DELETE /api/highlights/:id`
+- `DELETE /api/highlights/:id` (soft delete)
 
-## Highlight workflow
+## Seed content
 
-1. Select text in the lesson.
-2. Click **Highlight** in the floating action button.
-3. Highlight persists to SQLite (`database.db`).
-4. Refresh to verify highlight restoration.
-5. Hover or click a highlight and use **Delete**.
+Seed script inserts:
+
+- 1 default user
+- 3 categories
+- 5 lessons (real lesson content)
 
 ## Testing
 
@@ -45,29 +70,4 @@ Run automated tests:
 npm test
 ```
 
-Run browser acceptance E2E tests:
-
-```bash
-npm run test:e2e
-```
-
-Coverage of acceptance criteria includes:
-
-- Intro lesson API and rendering
-- Create/list/delete highlight API behavior
-- Graceful handling for unmatched highlights
-- App loading and error states
-- Full browser flow: create highlight, refresh persistence, and delete
-
-## Manual acceptance test checklist
-
-1. `npm run dev`
-2. Open Vite URL in browser
-3. Verify lesson content is displayed
-4. Select text and click **Highlight**
-5. Confirm yellow `<mark>` highlight appears
-6. Refresh and confirm highlight persists
-7. Create several additional highlights
-8. Delete a highlight
-9. Refresh and confirm deletion persists
-10. Restart dev server and confirm highlights still load
+Note: test runs use an in-memory Postgres-compatible database (`pg-mem`) and execute Knex migrations + seeds.

@@ -2,35 +2,49 @@ const path = require("node:path");
 const fs = require("node:fs");
 const express = require("express");
 const {
+  getLessonBySlug,
   getHighlightsByLessonId,
   createHighlight,
   deleteHighlightById,
+  checkDatabaseHealth,
 } = require("./db");
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3765;
 const app = express();
 
-const lesson = {
-  id: "intro",
-  title: "Introduction to JavaScript Functions",
-  content:
-    "<p>Functions are reusable blocks of code that let you organize logic into named units. You can call a function as many times as needed to avoid repeating yourself and keep code easier to maintain.</p>" +
-    "<p>There are several ways to define functions in JavaScript, including function declarations, function expressions, and methods on objects. Each style is useful in different situations.</p>" +
-    "<p>Arrow functions provide a concise syntax and lexical <code>this</code> behavior, which can simplify callback-heavy code. They are common in modern JavaScript, especially in React applications.</p>",
-};
-
 app.use(express.json());
 
-app.get("/api/lessons/intro", (_req, res) => {
-  res.status(200).json(lesson);
+app.get("/api/health", async (_req, res, next) => {
+  try {
+    await checkDatabaseHealth();
+    res.status(200).json({ status: "ok" });
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.get("/api/highlights/:lessonId", (req, res) => {
-  const rows = getHighlightsByLessonId(req.params.lessonId);
-  res.status(200).json(rows);
+app.get("/api/lessons/intro", async (_req, res, next) => {
+  try {
+    const lesson = await getLessonBySlug("intro");
+    if (!lesson) {
+      return res.status(404).json({ error: "Lesson not found." });
+    }
+    return res.status(200).json(lesson);
+  } catch (error) {
+    return next(error);
+  }
 });
 
-app.post("/api/highlights", (req, res) => {
+app.get("/api/highlights/:lessonId", async (req, res, next) => {
+  try {
+    const rows = await getHighlightsByLessonId(req.params.lessonId);
+    return res.status(200).json(rows);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post("/api/highlights", async (req, res, next) => {
   const { lesson_id, selected_text, text_before, text_after } = req.body ?? {};
 
   if (
@@ -47,28 +61,36 @@ app.post("/api/highlights", (req, res) => {
     });
   }
 
-  const created = createHighlight({
-    lesson_id: lesson_id.trim(),
-    selected_text,
-    text_before,
-    text_after,
-  });
+  try {
+    const created = await createHighlight({
+      lesson_id: lesson_id.trim(),
+      selected_text,
+      text_before,
+      text_after,
+    });
 
-  return res.status(201).json(created);
+    return res.status(201).json(created);
+  } catch (error) {
+    return next(error);
+  }
 });
 
-app.delete("/api/highlights/:id", (req, res) => {
+app.delete("/api/highlights/:id", async (req, res, next) => {
   const id = Number.parseInt(req.params.id, 10);
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Highlight id must be a positive integer." });
   }
 
-  const deleted = deleteHighlightById(id);
-  if (!deleted) {
-    return res.status(404).json({ error: "Highlight not found." });
-  }
+  try {
+    const deleted = await deleteHighlightById(id);
+    if (!deleted) {
+      return res.status(404).json({ error: "Highlight not found." });
+    }
 
-  return res.status(204).send();
+    return res.status(204).send();
+  } catch (error) {
+    return next(error);
+  }
 });
 
 const distPath = path.join(process.cwd(), "dist");
@@ -90,4 +112,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, lesson };
+module.exports = { app };

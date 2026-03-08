@@ -1,75 +1,70 @@
-const path = require("node:path");
-const Database = require("better-sqlite3");
+const { db } = require("./knex");
+const { DEFAULT_USER_ID } = require("./constants");
 
-const dbPath = path.join(process.cwd(), "database.db");
-const db = new Database(dbPath);
-
-db.pragma("journal_mode = WAL");
-db.exec(`
-  CREATE TABLE IF NOT EXISTS highlights (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    lesson_id TEXT NOT NULL,
-    selected_text TEXT NOT NULL,
-    text_before TEXT NOT NULL,
-    text_after TEXT NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-
-const getHighlightsStmt = db.prepare(
-  `
-    SELECT id, lesson_id, selected_text, text_before, text_after, created_at
-    FROM highlights
-    WHERE lesson_id = ?
-    ORDER BY id ASC
-  `,
-);
-
-const createHighlightStmt = db.prepare(
-  `
-    INSERT INTO highlights (lesson_id, selected_text, text_before, text_after)
-    VALUES (?, ?, ?, ?)
-  `,
-);
-
-const getHighlightByIdStmt = db.prepare(
-  `
-    SELECT id, lesson_id, selected_text, text_before, text_after, created_at
-    FROM highlights
-    WHERE id = ?
-  `,
-);
-
-const deleteHighlightStmt = db.prepare(
-  `
-    DELETE FROM highlights
-    WHERE id = ?
-  `,
-);
-
-function getHighlightsByLessonId(lessonId) {
-  return getHighlightsStmt.all(lessonId);
+async function getLessonBySlug(slug, userId = DEFAULT_USER_ID) {
+  return db("lessons")
+    .select("id", "slug", "title", "content", "version")
+    .where({
+      slug,
+      user_id: userId,
+    })
+    .whereNull("deleted_at")
+    .first();
 }
 
-function createHighlight({ lesson_id, selected_text, text_before, text_after }) {
-  const result = createHighlightStmt.run(
-    lesson_id,
-    selected_text,
-    text_before,
-    text_after,
-  );
-
-  return getHighlightByIdStmt.get(result.lastInsertRowid);
+async function getHighlightsByLessonId(lessonId, userId = DEFAULT_USER_ID) {
+  return db("highlights")
+    .select("id", "lesson_id", "selected_text", "text_before", "text_after", "created_at")
+    .where({
+      lesson_id: lessonId,
+      user_id: userId,
+    })
+    .whereNull("deleted_at")
+    .orderBy("id", "asc");
 }
 
-function deleteHighlightById(id) {
-  const result = deleteHighlightStmt.run(id);
-  return result.changes > 0;
+async function createHighlight(
+  { lesson_id, selected_text, text_before, text_after },
+  userId = DEFAULT_USER_ID,
+) {
+  const [created] = await db("highlights")
+    .insert({
+      user_id: userId,
+      lesson_id,
+      selected_text,
+      text_before,
+      text_after,
+    })
+    .returning(["id", "lesson_id", "selected_text", "text_before", "text_after", "created_at"]);
+
+  return created;
+}
+
+async function deleteHighlightById(id, userId = DEFAULT_USER_ID) {
+  const deletedCount = await db("highlights")
+    .where({
+      id,
+      user_id: userId,
+    })
+    .whereNull("deleted_at")
+    .update({
+      deleted_at: db.fn.now(),
+      updated_at: db.fn.now(),
+    });
+
+  return deletedCount > 0;
+}
+
+async function checkDatabaseHealth() {
+  await db.raw("select 1 as ok");
+  return true;
 }
 
 module.exports = {
   db,
+  getLessonBySlug,
   getHighlightsByLessonId,
   createHighlight,
   deleteHighlightById,
+  checkDatabaseHealth,
 };
