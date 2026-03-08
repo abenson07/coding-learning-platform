@@ -45,12 +45,19 @@ Run automated tests:
 npm test
 ```
 
+Run browser acceptance E2E tests:
+
+```bash
+npm run test:e2e
+```
+
 Coverage of acceptance criteria includes:
 
 - Intro lesson API and rendering
 - Create/list/delete highlight API behavior
 - Graceful handling for unmatched highlights
 - App loading and error states
+- Full browser flow: create highlight, refresh persistence, and delete
 
 ## Manual acceptance test checklist
 
