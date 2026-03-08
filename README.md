@@ -19,7 +19,7 @@ MVP implementation for **BEN-212**: display a single lesson and support persiste
    ```bash
    npm run dev
    ```
-   - Express API runs on `http://localhost:3000`
+   - Express API runs on `http://localhost:3765` (set `PORT` to override)
    - Vite app runs on `http://localhost:5173`
 
 ## API Endpoints

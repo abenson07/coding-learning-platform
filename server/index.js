@@ -7,7 +7,7 @@ const {
   deleteHighlightById,
 } = require("./db");
 
-const PORT = 3000;
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3765;
 const app = express();
 
 const lesson = {
